@@ -104,10 +104,11 @@ button:hover {
 
 .result-container {
     margin-top: 30px;
-    padding: 20px;
+    padding: 25px;
     background-color: #f8f9fa;
-    border-radius: 8px;
+    border-radius: 12px;
     border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .result-container.hidden {
@@ -116,30 +117,262 @@ button:hover {
 
 .result-container h2 {
     margin-top: 0;
+    margin-bottom: 25px;
     text-align: center;
     color: var(--primary-color);
+    font-size: 22px;
 }
 
-.result-container p {
-    font-size: 16px;
-    line-height: 1.6;
-    display: flex;
-    justify-content: space-between;
+.mode-result.hidden {
+    display: none;
 }
-.result-container p span {
+
+.result-main {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.result-type {
+    font-size: 18px;
+    color: var(--label-color);
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+.result-value-container {
+    font-size: 36px;
     font-weight: bold;
-    color: var(--danger-color);
 }
 
-.result-container p:first-of-type span {
+.result-value {
     color: var(--success-color);
-    font-size: 1.2em;
+}
+
+.result-unit {
+    font-size: 24px;
+    color: var(--primary-color);
+    margin-left: 5px;
+}
+
+.profit-info, .trade-info {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 25px;
+    padding: 15px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    margin: 5px 10px;
+}
+
+.info-label {
+    color: var(--label-color);
+    margin-right: 8px;
+}
+
+.info-value {
+    font-weight: bold;
+    color: var(--text-color);
+    margin-right: 4px;
+}
+
+.info-unit {
+    color: var(--primary-color);
+    font-size: 14px;
+}
+
+.cost-info {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--border-color);
+}
+
+.cost-info h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+    font-size: 18px;
 }
 
 .cost-details {
     margin-top: 15px;
     padding-top: 15px;
-    border-top: 1px dashed var(--border-color);
+    border-top: 1px solid #eee;
+}
+
+/* 图表容器样式 */
+.chart-container {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+}
+
+.small-charts {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 20px;
+    gap: 20px;
+}
+
+/* 历史记录样式 */
+.history-container {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+}
+
+.history-container.hidden {
+    display: none;
+}
+
+.history-container h2 {
+    margin-top: 0;
+    text-align: center;
+    color: var(--primary-color);
+    font-size: 18px;
+}
+
+.history-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+
+.history-item {
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: white;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
     font-size: 14px;
+}
+
+.history-item-header {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--primary-color);
+}
+
+.history-item-details {
+    display: flex;
+    justify-content: space-between;
     color: var(--label-color);
+}
+
+.history-actions {
+    text-align: center;
+    margin-top: 10px;
+}
+
+#clearHistoryBtn {
+    background-color: var(--danger-color);
+    font-size: 14px;
+    padding: 8px 16px;
+    width: auto;
+}
+
+#clearHistoryBtn:hover {
+    background-color: #c82333;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .calculator-container {
+        width: 90%;
+        padding: 15px;
+    }
+    
+    .input-group,
+    .radio-group,
+    .button-group {
+        margin-bottom: 15px;
+    }
+    
+    .input-group label,
+    .input-group input {
+        display: block;
+        width: 100%;
+    }
+    
+    .input-group label {
+        margin-bottom: 5px;
+    }
+    
+    .result-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .result-value {
+        margin-top: 5px;
+    }
+}
+
+/* 通知样式 */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateX(100%);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    z-index: 1000;
+}
+
+.notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.notification-success {
+    background-color: var(--success-color);
+}
+
+.notification-error {
+    background-color: var(--danger-color);
+}
+
+.notification-info {
+    background-color: var(--primary-color);
+}
+
+/* 输入错误样式 */
+.input-error {
+    border-color: var(--danger-color) !important;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+/* 计算模式分隔样式 */
+.calculator-mode {
+    margin-bottom: 25px;
+    padding: 15px;
+    background-color: #f1f7ff;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.calculator-mode h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+    font-size: 16px;
 }
