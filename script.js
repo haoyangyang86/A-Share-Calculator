@@ -1,4 +1,4 @@
-// A股高抛低吸计算器 - 基于ES6+特性重构
+// 股票交易利润计算器
 
 /**
  * 防抖函数 - 用于性能优化
@@ -36,42 +36,33 @@ class StockCalculator {
             result: document.getElementById('result'),
             history: document.getElementById('history'),
             historyList: document.getElementById('historyList'),
-            // 原有模式输入元素
-            basePrice: document.getElementById('basePrice'),
-            profitValue: document.getElementById('profitValue'),
-            calcSell: document.getElementById('calcSell'),
-            calcBuy: document.getElementById('calcBuy'),
-            profitPercent: document.getElementById('profitPercent'),
-            profitFixed: document.getElementById('profitFixed'),
-            // 模式二输入元素
+            // 交易输入元素
             buyPrice: document.getElementById('buyPrice'),
             sellPrice: document.getElementById('sellPrice'),
-            calcProfit: document.getElementById('calcProfit'),
-            calcProfitRate: document.getElementById('calcProfitRate'),
-            // 模式选择元素
-            useMode1: document.getElementById('useMode1'),
-            useMode2: document.getElementById('useMode2'),
+            tradeDirection1: document.getElementById('tradeDirection1'),
+            tradeDirection2: document.getElementById('tradeDirection2'),
+            // 成本更新输入元素
+            currentCost: document.getElementById('currentCost'),
+            currentShares: document.getElementById('currentShares'),
+            enableCostUpdate: document.getElementById('enableCostUpdate'),
             // 结果展示元素
-            resultTypeLabel: document.getElementById('resultTypeLabel'),
-            resultValue: document.getElementById('resultValue'),
-            resultUnit: document.getElementById('resultUnit'),
             totalCost: document.getElementById('totalCost'),
             buyCost: document.getElementById('buyCost'),
             sellCost: document.getElementById('sellCost'),
-            // 新模式结果显示元素
-            mode1Result: document.getElementById('mode1Result'),
-            mode2Result: document.getElementById('mode2Result'),
-            resultTypeLabel2: document.getElementById('resultTypeLabel2'),
-            resultValue2: document.getElementById('resultValue2'),
-            resultUnit2: document.getElementById('resultUnit2'),
             netProfit: document.getElementById('netProfit'),
             profitRate: document.getElementById('profitRate'),
             buyPriceDisplay: document.getElementById('buyPriceDisplay'),
             sellPriceDisplay: document.getElementById('sellPriceDisplay'),
             sharesDisplay: document.getElementById('sharesDisplay'),
-            // 模式2中新增的利润和利润率显示元素
-            mode2NetProfit: document.getElementById('mode2NetProfit'),
-            mode2ProfitRate: document.getElementById('mode2ProfitRate')
+            tradeDirectionDisplay: document.getElementById('tradeDirectionDisplay'),
+            // 成本更新结果元素
+            costUpdateResult: document.getElementById('costUpdateResult'),
+            beforeCost: document.getElementById('beforeCost'),
+            beforeShares: document.getElementById('beforeShares'),
+            afterCost: document.getElementById('afterCost'),
+            afterShares: document.getElementById('afterShares'),
+            costChange: document.getElementById('costChange'),
+            costChangeRate: document.getElementById('costChangeRate')
         };
         
         // --- 初始化事件监听 ---
@@ -98,101 +89,74 @@ class StockCalculator {
             }
         });
         
-        // 添加输入即时验证（使用防抖优化）
-        const debouncedValidateInput = debounce((inputEl) => {
-            this.validateInput(inputEl);
-        }, 300);
-        
-        Object.values(this.elements).forEach(el => {
-            if (el && el.nodeName === 'INPUT' && el.type === 'number') {
-                el.addEventListener('input', (e) => debouncedValidateInput(e.target));
+        // 添加输入验证
+        const numericInputs = [this.elements.buyPrice, this.elements.sellPrice, this.elements.shares, this.elements.commissionRate];
+        numericInputs.forEach(input => {
+            if (input) {
+                input.addEventListener('input', debounce(() => this.validateInput(input), 300));
             }
         });
     }
     
     // 输入验证
     validateInput(inputEl) {
-        // 获取缓存的验证状态，避免不必要的DOM操作
-        if (inputEl.dataset.lastValue === inputEl.value) {
-            return;
-        }
-        
         const value = parseFloat(inputEl.value);
-        const minValue = parseFloat(inputEl.min) || 0;
-        
-        if (!isNaN(value) && value <= minValue) {
-            // 使用requestAnimationFrame批量处理DOM操作
-            requestAnimationFrame(() => {
-                inputEl.classList.add('input-error');
-            });
+        if (isNaN(value) || value < 0) {
+            inputEl.style.borderColor = '#ff4444';
+            return false;
         } else {
-            // 使用requestAnimationFrame批量处理DOM操作
-            requestAnimationFrame(() => {
-                inputEl.classList.remove('input-error');
-            });
+            inputEl.style.borderColor = '#ddd';
+            return true;
         }
-        
-        // 缓存当前值
-        inputEl.dataset.lastValue = inputEl.value;
     }
     
     // 处理计算逻辑
     handleCalculate() {
-        // 获取并转换用户输入
-        const shares = parseInt(this.elements.shares.value, 10);
-        const commissionRate = parseFloat(this.elements.commissionRate.value) / 100; // 转换为小数
+        // 获取输入值
+        const buyPrice = parseFloat(this.elements.buyPrice.value);
+        const sellPrice = parseFloat(this.elements.sellPrice.value);
+        const shares = parseInt(this.elements.shares.value);
+        const commissionRate = parseFloat(this.elements.commissionRate.value) / 100;
         
-        // 检查共用输入是否有效
-        if (isNaN(shares) || isNaN(commissionRate) || shares <= 0) {
-            this.showNotification('请输入有效的股数和佣金率！', 'error');
+        // 验证输入
+        if (isNaN(buyPrice) || isNaN(sellPrice) || isNaN(shares) || isNaN(commissionRate)) {
+            this.showNotification('请输入完整的计算参数！', 'error');
             return;
         }
         
-        // 尝试获取两头价格计算模式的输入
-        const buyPrice = parseFloat(this.elements.buyPrice.value);
-        const sellPrice = parseFloat(this.elements.sellPrice.value);
-        
-        // 尝试获取原有模式的输入
-        const basePrice = parseFloat(this.elements.basePrice.value);
-        const profitValue = parseFloat(this.elements.profitValue.value);
-        
-        // 检查两个模式是否都有输入
-        const hasMode1Input = !isNaN(basePrice) && !isNaN(profitValue) && basePrice > 0 && profitValue > 0;
-        const hasMode2Input = !isNaN(buyPrice) && !isNaN(sellPrice) && buyPrice > 0 && sellPrice > 0;
-        
-        // 决定使用哪种计算模式
-        // 优先检查是否选中了特定模式的单选按钮
-        if (this.elements.useMode1 && this.elements.useMode1.checked && hasMode1Input) {
-            // 用户明确选择了模式1
-            if (this.elements.calcSell.checked) {
-                this.calculateSellPrice(basePrice, shares, commissionRate, profitValue);
-            } else {
-                this.calculateBuyPrice(basePrice, shares, commissionRate, profitValue);
-            }
-        } else if (this.elements.useMode2 && this.elements.useMode2.checked && hasMode2Input) {
-            // 用户明确选择了模式2
-            this.calculateProfitAndCost(buyPrice, sellPrice, shares, commissionRate);
-        } else if (hasMode2Input && !hasMode1Input) {
-            // 只有模式2有输入
-            this.calculateProfitAndCost(buyPrice, sellPrice, shares, commissionRate);
-        } else if (hasMode1Input && !hasMode2Input) {
-            // 只有模式1有输入
-            if (this.elements.calcSell.checked) {
-                this.calculateSellPrice(basePrice, shares, commissionRate, profitValue);
-            } else {
-                this.calculateBuyPrice(basePrice, shares, commissionRate, profitValue);
-            }
-        } else if (hasMode1Input && hasMode2Input) {
-            // 两个模式都有输入，但没有明确选择
-            this.showNotification('请选择要使用的计算模式！', 'error');
-        } else {
-            // 显示输入错误提示
-            this.showNotification('请输入完整的计算参数！', 'error');
+        if (buyPrice <= 0 || sellPrice <= 0 || shares <= 0 || commissionRate < 0) {
+            this.showNotification('请输入有效的数值！', 'error');
+            return;
         }
+        
+        // 获取交易方向
+        const tradeDirection = this.elements.tradeDirection1.checked ? 'buy_sell' : 'sell_buy';
+        
+        // 检查是否启用成本更新功能
+        let costUpdateData = null;
+        if (this.elements.enableCostUpdate.checked) {
+            const currentCost = parseFloat(this.elements.currentCost.value);
+            const currentShares = parseInt(this.elements.currentShares.value);
+            
+            if (isNaN(currentCost) || isNaN(currentShares)) {
+                this.showNotification('启用成本更新功能时，请输入当前成本和持仓数量！', 'error');
+                return;
+            }
+            
+            if (currentCost <= 0 || currentShares <= 0) {
+                this.showNotification('当前成本和持仓数量必须大于0！', 'error');
+                return;
+            }
+            
+            costUpdateData = { currentCost, currentShares };
+        }
+        
+        // 计算利润和交易费用
+        this.calculateProfitAndCost(buyPrice, sellPrice, shares, commissionRate, tradeDirection, costUpdateData);
     }
     
-    // 计算两头价格的利润和交易费用
-    calculateProfitAndCost(buyPrice, sellPrice, shares, commissionRate) {
+    // 计算利润和交易费用
+    calculateProfitAndCost(buyPrice, sellPrice, shares, commissionRate, tradeDirection, costUpdateData = null) {
         // 计算买入和卖出金额
         const buyAmount = buyPrice * shares;
         const sellAmount = sellPrice * shares;
@@ -210,29 +174,107 @@ class StockCalculator {
         const totalSellCost = sellCommission + sellStampDuty + sellTransferFee;
         const actualSellRevenue = sellAmount - totalSellCost;
         
-        // 计算净利润
-        const netProfit = actualSellRevenue - actualBuyAmount;
+        // 计算净利润（根据交易方向）
+        let netProfit;
+        let stockCost;
+        let tradeDirectionText;
         
-        // 计算利润率（基于股票的实际成本：买入价 * 股数）
-        const stockCost = buyPrice * shares;
+        if (tradeDirection === 'buy_sell') {
+            // 高抛低吸：先买后卖
+            netProfit = actualSellRevenue - actualBuyAmount;
+            stockCost = buyPrice * shares;
+            tradeDirectionText = '高抛低吸 (先买后卖)';
+        } else {
+            // 低吸高抛：先卖后买
+            netProfit = actualSellRevenue - actualBuyAmount;
+            stockCost = sellPrice * shares;
+            tradeDirectionText = '低吸高抛 (先卖后买)';
+        }
+        
+        // 计算利润率（基于股票的实际成本）
         const profitRate = (netProfit / stockCost) * 100;
         
-        // 判断计算类型
-        const calcType = this.elements.calcProfit.checked ? 'profit' : 'profitRate';
+        // 计算成本更新（如果启用）
+        let costUpdate = null;
+        if (costUpdateData) {
+            costUpdate = this.calculateCostUpdate(
+                costUpdateData.currentCost, 
+                costUpdateData.currentShares, 
+                buyPrice, 
+                sellPrice, 
+                shares, 
+                tradeDirection,
+                totalBuyCost,
+                totalSellCost
+            );
+        }
         
         // 展示结果
         this.displayResults({
             profit: netProfit,
             profitRate: profitRate,
-            calcType: calcType,
             totalCost: totalBuyCost + totalSellCost,
             buyCost: totalBuyCost,
             sellCost: totalSellCost,
             buyPrice: buyPrice,
             sellPrice: sellPrice,
             shares: shares,
+            tradeDirection: tradeDirectionText,
+            costUpdate: costUpdate,
             timestamp: new Date().toISOString()
         });
+    }
+    
+    // 计算成本更新（做T后的成本计算）
+    calculateCostUpdate(currentCost, currentShares, buyPrice, sellPrice, tradeShares, tradeDirection, buyCost, sellCost) {
+        let afterCost, afterShares, costChange, costChangeRate;
+        
+        if (tradeDirection === 'buy_sell') {
+            // 高抛低吸：先买后卖
+            // 买入增加持仓，卖出减少持仓
+            const totalCostBefore = currentCost * currentShares;
+            const buyTotalCost = (buyPrice * tradeShares) + buyCost;
+            const sellRevenue = (sellPrice * tradeShares) - sellCost;
+            
+            // 先买入
+            const sharesAfterBuy = currentShares + tradeShares;
+            const totalCostAfterBuy = totalCostBefore + buyTotalCost;
+            
+            // 再卖出
+            afterShares = sharesAfterBuy - tradeShares;
+            const totalCostAfterSell = totalCostAfterBuy - sellRevenue;
+            
+            afterCost = afterShares > 0 ? totalCostAfterSell / afterShares : 0;
+        } else {
+            // 低吸高抛：先卖后买
+            // 卖出减少持仓，买入增加持仓
+            const totalCostBefore = currentCost * currentShares;
+            const sellRevenue = (sellPrice * tradeShares) - sellCost;
+            const buyTotalCost = (buyPrice * tradeShares) + buyCost;
+            
+            // 先卖出
+            const sharesAfterSell = currentShares - tradeShares;
+            const totalCostAfterSell = totalCostBefore - sellRevenue;
+            
+            // 再买入
+            afterShares = sharesAfterSell + tradeShares;
+            const totalCostAfterBuy = totalCostAfterSell + buyTotalCost;
+            
+            afterCost = afterShares > 0 ? totalCostAfterBuy / afterShares : 0;
+        }
+        
+        // 计算成本变化
+        costChange = afterCost - currentCost;
+        costChangeRate = currentCost > 0 ? (costChange / currentCost) * 100 : 0;
+        
+        return {
+            beforeCost: currentCost,
+            beforeShares: currentShares,
+            afterCost: afterCost,
+            afterShares: afterShares,
+            costChange: costChange,
+            costChangeRate: costChangeRate
+        };
     }
     
     // 计算佣金 (包含最低5元)
@@ -241,188 +283,44 @@ class StockCalculator {
         return Math.max(commission, this.MIN_COMMISSION);
     }
     
-    // 计算目标卖出价 (高抛)
-    calculateSellPrice(buyPrice, shares, commissionRate, profitValue) {
-        const isPercentMode = this.elements.profitPercent.checked;
-        const totalBuyValue = buyPrice * shares;
-
-        // 计算买入成本
-        const buyCommission = this.getCommission(totalBuyValue, commissionRate);
-        const buyTransferFee = totalBuyValue * this.TRANSFER_FEE_RATE;
-        const totalBuyCost = buyCommission + buyTransferFee;
-        const actualBuyAmount = totalBuyValue + totalBuyCost;
-
-        // 计算期望利润
-        const targetProfit = isPercentMode 
-            ? actualBuyAmount * (profitValue / 100) // 百分比模式
-            : profitValue; // 固定金额模式
-
-        // 核心公式：推导目标卖出价
-        const costRateSum = commissionRate + this.STAMP_DUTY_RATE + this.TRANSFER_FEE_RATE;
-        let targetSellPrice = (actualBuyAmount + targetProfit) / (shares * (1 - costRateSum));
-        
-        // 验证卖出佣金是否低于最低值，并修正
-        const sellCommission = targetSellPrice * shares * commissionRate;
-        if (sellCommission < this.MIN_COMMISSION) {
-             targetSellPrice = (actualBuyAmount + targetProfit + this.MIN_COMMISSION) / (shares * (1 - this.STAMP_DUTY_RATE - this.TRANSFER_FEE_RATE));
-        }
-
-        // 更新最终的卖出成本和利润用于展示
-        const finalSellValue = targetSellPrice * shares;
-        const finalSellCommission = this.getCommission(finalSellValue, commissionRate);
-        const finalSellStampDuty = finalSellValue * this.STAMP_DUTY_RATE;
-        const finalSellTransferFee = finalSellValue * this.TRANSFER_FEE_RATE;
-        const totalSellCost = finalSellCommission + finalSellStampDuty + finalSellTransferFee;
-        const netProfit = finalSellValue - actualBuyAmount - totalSellCost;
-
-        // 展示结果
-        this.displayResults({
-            targetPrice: targetSellPrice.toFixed(3),
-            netProfit: netProfit.toFixed(2),
-            totalCost: (totalBuyCost + totalSellCost).toFixed(2),
-            buyCost: totalBuyCost.toFixed(2),
-            sellCost: totalSellCost.toFixed(2),
-            type: 'sell',
-            basePrice: buyPrice.toFixed(3),
-            shares: shares,
-            profitValue: profitValue,
-            profitMode: isPercentMode ? 'percent' : 'fixed',
-            timestamp: new Date().toISOString()
-        });
-    }
-    
-    // 计算目标买入价 (低吸)
-    calculateBuyPrice(sellPrice, shares, commissionRate, profitValue) {
-        const isPercentMode = this.elements.profitPercent.checked;
-        const totalSellValue = sellPrice * shares;
-
-        // 计算卖出净收入
-        const sellCommission = this.getCommission(totalSellValue, commissionRate);
-        const sellStampDuty = totalSellValue * this.STAMP_DUTY_RATE;
-        const sellTransferFee = totalSellValue * this.TRANSFER_FEE_RATE;
-        const totalSellCost = sellCommission + sellStampDuty + sellTransferFee;
-        const actualSellRevenue = totalSellValue - totalSellCost;
-
-        // 计算期望利润
-        const targetProfit = isPercentMode 
-            ? actualSellRevenue * (profitValue / 100) // 百分比模式
-            : profitValue; // 固定金额模式
-
-        // 核心公式：推导目标买入价
-        const costRateSum = commissionRate + this.TRANSFER_FEE_RATE;
-        let targetBuyPrice = (actualSellRevenue - targetProfit) / (shares * (1 + costRateSum));
-
-        // 验证买入佣金是否低于最低值，并修正
-        const buyCommission = targetBuyPrice * shares * commissionRate;
-        if (buyCommission < this.MIN_COMMISSION) {
-            targetBuyPrice = (actualSellRevenue - targetProfit - this.MIN_COMMISSION) / (shares * (1 + this.TRANSFER_FEE_RATE));
-        }
-
-        // 更新最终的买入成本和利润用于展示
-        const finalBuyValue = targetBuyPrice * shares;
-        const finalBuyCommission = this.getCommission(finalBuyValue, commissionRate);
-        const finalBuyTransferFee = finalBuyValue * this.TRANSFER_FEE_RATE;
-        const totalBuyCost = finalBuyCommission + finalBuyTransferFee;
-        const netProfit = actualSellRevenue - finalBuyValue - totalBuyCost;
-        
-        // 展示结果
-        this.displayResults({
-            targetPrice: targetBuyPrice.toFixed(3),
-            netProfit: netProfit.toFixed(2),
-            totalCost: (totalBuyCost + totalSellCost).toFixed(2),
-            buyCost: totalBuyCost.toFixed(2),
-            sellCost: totalSellCost.toFixed(2),
-            type: 'buy',
-            basePrice: sellPrice.toFixed(3),
-            shares: shares,
-            profitValue: profitValue,
-            profitMode: isPercentMode ? 'percent' : 'fixed',
-            timestamp: new Date().toISOString()
-        });
-    }
-    
-    // 在页面上展示结果
+    // 显示计算结果
     displayResults(data) {
-        // 批量更新DOM元素以提高性能
+        // 使用 requestAnimationFrame 优化DOM更新
         requestAnimationFrame(() => {
-            // 显示结果和历史记录区域
+            // 显示结果区域
             this.elements.result.classList.remove('hidden');
-            this.elements.history.classList.remove('hidden');
             
-            // 判断是哪种计算模式
-            if (data.calcType) {
-                // 两头价格计算模式
-                // 显示模式二结果区域，隐藏模式一
-                this.elements.mode1Result.classList.add('hidden');
-                this.elements.mode2Result.classList.remove('hidden');
-                
-                // 设置计算类型和结果
-                if (data.calcType === 'profit') {
-                    this.elements.resultTypeLabel2.textContent = '利润';
-                    this.elements.resultValue2.textContent = data.profit.toFixed(2);
-                    this.elements.resultUnit2.textContent = '元';
-                } else {
-                    this.elements.resultTypeLabel2.textContent = '利润率';
-                    this.elements.resultValue2.textContent = data.profitRate.toFixed(2);
-                    this.elements.resultUnit2.textContent = '%';
-                }
-                
-                // 在模式2中同时显示利润和利润率
-                this.elements.mode2NetProfit.textContent = data.profit.toFixed(2);
-                this.elements.mode2ProfitRate.textContent = data.profitRate.toFixed(2);
-                
-                // 显示交易信息
-                this.elements.buyPriceDisplay.textContent = parseFloat(data.buyPrice).toFixed(3);
-                this.elements.sellPriceDisplay.textContent = parseFloat(data.sellPrice).toFixed(3);
-                this.elements.sharesDisplay.textContent = data.shares;
-            } else {
-                // 原有模式（高抛低吸）
-                // 显示模式一结果区域，隐藏模式二
-                this.elements.mode2Result.classList.add('hidden');
-                this.elements.mode1Result.classList.remove('hidden');
-                
-                // 设置计算类型和目标价格
-                if (data.type === 'sell') {
-                    this.elements.resultTypeLabel.textContent = '目标卖出价';
-                } else {
-                    this.elements.resultTypeLabel.textContent = '目标买入价';
-                }
-                
-                // 更新价格和单位显示
-                this.elements.resultValue.textContent = data.targetPrice;
-                this.elements.resultUnit.textContent = '元';
-                
-                // 显示利润信息
-                // 注意：在原有模式中，netProfit和totalCost已经是字符串类型
-                const netProfit = parseFloat(data.netProfit);
-                this.elements.netProfit.textContent = netProfit.toFixed(2);
-                
-                // 修复模式1的利润率计算
-                // 如果是百分比模式，直接使用用户输入的利润率
-                // 否则，计算实际利润率（利润除以股票实际成本）
-                if (data.profitMode === 'percent') {
-                    // 百分比模式：显示用户设置的利润率
-                    this.elements.profitRate.textContent = data.profitValue.toFixed(2);
-                } else {
-                    // 固定金额模式：计算实际利润率
-                    // 计算股票的实际成本（基准价 * 股数）
-                    const stockCost = parseFloat(data.basePrice) * data.shares;
-                    this.elements.profitRate.textContent = ((netProfit / stockCost) * 100).toFixed(2);
-                }
-            }
+            // 显示利润信息
+            this.elements.netProfit.textContent = data.profit.toFixed(2);
+            this.elements.profitRate.textContent = data.profitRate.toFixed(2);
+            
+            // 显示交易信息
+            this.elements.tradeDirectionDisplay.textContent = data.tradeDirection;
+            this.elements.buyPriceDisplay.textContent = parseFloat(data.buyPrice).toFixed(3);
+            this.elements.sellPriceDisplay.textContent = parseFloat(data.sellPrice).toFixed(3);
+            this.elements.sharesDisplay.textContent = data.shares;
             
             // 更新通用交易费用信息
-            // 注意：在模式1中，费用数据已经是字符串类型
-            if (data.calcType) {
-                // 模式2：费用数据是数字类型
-                this.elements.totalCost.textContent = data.totalCost.toFixed(2);
-                this.elements.buyCost.textContent = `¥ ${data.buyCost.toFixed(2)}`;
-                this.elements.sellCost.textContent = `¥ ${data.sellCost.toFixed(2)}`;
+            this.elements.totalCost.textContent = data.totalCost.toFixed(2);
+            this.elements.buyCost.textContent = `¥ ${data.buyCost.toFixed(2)}`;
+            this.elements.sellCost.textContent = `¥ ${data.sellCost.toFixed(2)}`;
+            
+            // 显示或隐藏成本更新结果
+            if (data.costUpdate) {
+                this.elements.costUpdateResult.classList.remove('hidden');
+                this.elements.beforeCost.textContent = data.costUpdate.beforeCost.toFixed(3);
+                this.elements.beforeShares.textContent = data.costUpdate.beforeShares;
+                this.elements.afterCost.textContent = data.costUpdate.afterCost.toFixed(3);
+                this.elements.afterShares.textContent = data.costUpdate.afterShares;
+                this.elements.costChange.textContent = data.costUpdate.costChange.toFixed(3);
+                this.elements.costChangeRate.textContent = data.costUpdate.costChangeRate.toFixed(2);
+                
+                // 根据成本变化设置颜色
+                const changeColor = data.costUpdate.costChange < 0 ? '#4CAF50' : '#f44336';
+                this.elements.costChange.style.color = changeColor;
+                this.elements.costChangeRate.style.color = changeColor;
             } else {
-                // 模式1：费用数据已经是字符串类型
-                this.elements.totalCost.textContent = data.totalCost;
-                this.elements.buyCost.textContent = data.buyCost;
-                this.elements.sellCost.textContent = data.sellCost;
+                this.elements.costUpdateResult.classList.add('hidden');
             }
         });
         
@@ -440,18 +338,31 @@ class StockCalculator {
             // 获取现有历史记录
             let history = this.getHistory();
             
-            // 添加新记录到开头
-            history.unshift(resultData);
+            // 创建新记录
+            const newRecord = {
+                id: Date.now(),
+                timestamp: resultData.timestamp,
+                buyPrice: resultData.buyPrice,
+                sellPrice: resultData.sellPrice,
+                shares: resultData.shares,
+                profit: resultData.profit,
+                profitRate: resultData.profitRate,
+                tradeDirection: resultData.tradeDirection,
+                totalCost: resultData.totalCost
+            };
             
-            // 限制历史记录数量为20条
-            if (history.length > 20) {
-                history = history.slice(0, 20);
+            // 添加到历史记录开头
+            history.unshift(newRecord);
+            
+            // 限制历史记录数量（最多保存50条）
+            if (history.length > 50) {
+                history = history.slice(0, 50);
             }
             
             // 保存到localStorage
             localStorage.setItem(this.HISTORY_KEY, JSON.stringify(history));
             
-            // 更新历史记录显示
+            // 重新渲染历史记录列表
             this.renderHistoryList(history);
         } catch (error) {
             console.error('保存历史记录失败:', error);
@@ -472,134 +383,91 @@ class StockCalculator {
     // 加载历史记录
     loadHistory() {
         const history = this.getHistory();
-        if (history.length > 0) {
-            this.elements.history.classList.remove('hidden');
-            this.renderHistoryList(history);
-        }
+        this.renderHistoryList(history);
     }
     
     // 渲染历史记录列表
     renderHistoryList(history) {
-        this.elements.historyList.innerHTML = '';
+        if (!this.elements.historyList) return;
         
-        history.forEach((record, index) => {
-            const item = document.createElement('div');
-            item.className = 'history-item';
-            
-            // 格式化时间
-            const date = new Date(record.timestamp);
-            const formattedTime = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-            
-            let historyItemContent = '';
-            
-            // 判断是哪种计算模式
-            if (record.calcType) {
-                // 两头价格计算模式
-                const calcTypeText = record.calcType === 'profit' ? '计算利润' : '计算利润率';
-                
-                historyItemContent = `
-                    <div class="history-item-header">
-                        ${formattedTime} · ${calcTypeText}
-                    </div>
-                    <div class="history-item-details">
-                        <span>买入价: ${record.buyPrice}元</span>
-                        <span>卖出价: ${record.sellPrice}元</span>
-                    </div>
-                    <div class="history-item-details">
-                        <span>股数: ${record.shares}股</span>
-                        <span>总费用: ¥${record.totalCost.toFixed(2)}</span>
-                    </div>
-                    <div class="history-item-details">
-                        <span>净利润: ¥${record.profit.toFixed(2)}</span>
-                        <span>利润率: ${record.profitRate.toFixed(2)}%</span>
-                    </div>
-                `;
-            } else {
-                // 原有模式（高抛低吸）
-                const tradeTypeText = record.type === 'sell' ? '高抛卖出' : '低吸买入';
-                const profitModeText = record.profitMode === 'percent' ? `${record.profitValue}%` : `¥${record.profitValue}`;
-                
-                historyItemContent = `
-                    <div class="history-item-header">
-                        ${formattedTime} · ${tradeTypeText}
-                    </div>
-                    <div class="history-item-details">
-                        <span>基准价: ${record.basePrice}元 × ${record.shares}股</span>
-                        <span>目标: ${record.targetPrice}元</span>
-                    </div>
-                    <div class="history-item-details">
-                        <span>利润: ${profitModeText}</span>
-                        <span>净利润: ¥${record.netProfit}</span>
-                    </div>
-                    <div class="history-item-details">
-                        <span>总费用: ¥${record.totalCost}</span>
-                    </div>
-                `;
-            }
-            
-            // 设置项目内容
-            item.innerHTML = historyItemContent;
-            
-            // 添加点击事件 - 重新填充表单
-            item.addEventListener('click', () => this.loadRecordToForm(record));
-            
-            this.elements.historyList.appendChild(item);
-        });
-    }
-    
-    // 从历史记录加载数据到表单
-    loadRecordToForm(record) {
-        // 填充共享的字段
-        this.elements.shares.value = record.shares;
-        
-        // 判断是哪种计算模式
-        if (record.calcType) {
-            // 两头价格计算模式
-            this.elements.buyPrice.value = record.buyPrice;
-            this.elements.sellPrice.value = record.sellPrice;
-            
-            // 选择计算类型
-            if (record.calcType === 'profit') {
-                this.elements.calcProfit.checked = true;
-            } else {
-                this.elements.calcProfitRate.checked = true;
-            }
-        } else {
-            // 原有模式（高抛低吸）
-            this.elements.basePrice.value = record.basePrice;
-            this.elements.profitValue.value = record.profitValue;
-            
-            // 选择交易类型
-            if (record.type === 'sell') {
-                this.elements.calcSell.checked = true;
-            } else {
-                this.elements.calcBuy.checked = true;
-            }
-            
-            // 选择利润模式
-            if (record.profitMode === 'percent') {
-                this.elements.profitPercent.checked = true;
-            } else {
-                this.elements.profitFixed.checked = true;
-            }
+        if (history.length === 0) {
+            this.elements.historyList.innerHTML = '<p class="no-history">暂无历史记录</p>';
+            return;
         }
         
-        // 显示提示
-        this.showNotification('已从历史记录加载数据');
+        const historyHTML = history.map(record => {
+            const date = new Date(record.timestamp);
+            const formattedDate = date.toLocaleString('zh-CN');
+            const profitClass = record.profit >= 0 ? 'profit-positive' : 'profit-negative';
+            
+            return `
+                <div class="history-item" data-record-id="${record.id}">
+                    <div class="history-header">
+                        <span class="history-date">${formattedDate}</span>
+                        <span class="history-direction">${record.tradeDirection}</span>
+                    </div>
+                    <div class="history-details">
+                        <div class="history-prices">
+                            <span>买入: ¥${record.buyPrice.toFixed(3)}</span>
+                            <span>卖出: ¥${record.sellPrice.toFixed(3)}</span>
+                            <span>股数: ${record.shares}</span>
+                        </div>
+                        <div class="history-profit ${profitClass}">
+                            <span>利润: ¥${record.profit.toFixed(2)}</span>
+                            <span>利润率: ${record.profitRate.toFixed(2)}%</span>
+                        </div>
+                    </div>
+                    <div class="history-actions">
+                        <button class="load-record-btn" onclick="calculator.loadRecordToForm(${record.id})">
+                            重新计算
+                        </button>
+                        <button class="delete-record-btn" onclick="calculator.deleteRecord(${record.id})">
+                            删除
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        this.elements.historyList.innerHTML = historyHTML;
+    }
+    
+    // 加载记录到表单
+    loadRecordToForm(recordId) {
+        const history = this.getHistory();
+        const record = history.find(r => r.id === recordId);
+        
+        if (record) {
+            this.elements.buyPrice.value = record.buyPrice;
+            this.elements.sellPrice.value = record.sellPrice;
+            this.elements.shares.value = record.shares;
+            
+            // 设置交易方向
+            if (record.tradeDirection.includes('先买后卖')) {
+                this.elements.tradeDirection1.checked = true;
+            } else {
+                this.elements.tradeDirection2.checked = true;
+            }
+            
+            this.showNotification('已加载历史记录到表单', 'success');
+        }
+    }
+    
+    // 删除单条记录
+    deleteRecord(recordId) {
+        let history = this.getHistory();
+        history = history.filter(r => r.id !== recordId);
+        localStorage.setItem(this.HISTORY_KEY, JSON.stringify(history));
+        this.renderHistoryList(history);
+        this.showNotification('记录已删除', 'success');
     }
     
     // 清空历史记录
     clearHistory() {
         if (confirm('确定要清空所有历史记录吗？')) {
-            try {
-                localStorage.removeItem(this.HISTORY_KEY);
-                this.elements.historyList.innerHTML = '';
-                this.elements.history.classList.add('hidden');
-                this.showNotification('历史记录已清空！', 'success');
-            } catch (error) {
-                console.error('清空历史记录失败:', error);
-                this.showNotification('清空失败，请重试！', 'error');
-            }
+            localStorage.removeItem(this.HISTORY_KEY);
+            this.renderHistoryList([]);
+            this.showNotification('历史记录已清空', 'success');
         }
     }
     
@@ -613,22 +481,21 @@ class StockCalculator {
         // 添加到页面
         document.body.appendChild(notification);
         
-        // 显示通知
-        setTimeout(() => {
-            notification.classList.add('show');
-        }, 10);
+        // 显示动画
+        setTimeout(() => notification.classList.add('show'), 100);
         
-        // 3秒后自动消失
+        // 自动隐藏
         setTimeout(() => {
             notification.classList.remove('show');
-            setTimeout(() => {
-                document.body.removeChild(notification);
-            }, 300);
+            setTimeout(() => document.body.removeChild(notification), 300);
         }, 3000);
     }
 }
 
-// 初始化计算器
+// 全局变量，用于历史记录操作
+let calculator;
+
+// 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
-    const calculator = new StockCalculator();
+    calculator = new StockCalculator();
 });

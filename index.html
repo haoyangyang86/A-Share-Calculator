@@ -15,59 +15,26 @@
         </header>
 
         <main>
-            <!-- 原有模式（高抛低吸） -->
+            <!-- 股票交易计算器 -->
             <div class="calculator-mode">
-                <h3>模式一: 根据利润或利润率计算目标价格</h3>
-                
-                <div class="input-group">
-                    <label for="basePrice">基准价格 (元)</label>
-                    <input type="number" id="basePrice" placeholder="您买入或卖出的价格">
-                </div>
-
-                <div class="input-group">
-                    <label for="shares">股票数量 (股)</label>
-                    <input type="number" id="shares" placeholder="例如: 1000">
-                </div>
-
-                <div class="input-group">
-                    <label for="commissionRate">佣金率 (%)</label>
-                    <input type="number" id="commissionRate" value="0.025" step="0.001" placeholder="例如: 0.025 (万2.5)">
-                </div>
+                <h3>股票交易利润计算器</h3>
                 
                 <div class="input-group radio-group">
-                    <label>计算目标:</label>
-                    <input type="radio" id="calcSell" name="tradeType" value="sell" checked>
-                    <label for="calcSell">高抛卖出价</label>
-                    <input type="radio" id="calcBuy" name="tradeType" value="buy">
-                    <label for="calcBuy">低吸买入价</label>
+                    <label>交易方向:</label>
+                    <input type="radio" id="tradeDirection1" name="tradeDirection" value="buy_sell" checked>
+                    <label for="tradeDirection1">高抛低吸 (先买后卖)</label>
+                    <input type="radio" id="tradeDirection2" name="tradeDirection" value="sell_buy">
+                    <label for="tradeDirection2">低吸高抛 (先卖后买)</label>
                 </div>
-
-                <div class="input-group radio-group">
-                    <label>盈利模式:</label>
-                    <input type="radio" id="profitPercent" name="profitMode" value="percent" checked>
-                    <label for="profitPercent">百分比</label>
-                    <input type="radio" id="profitFixed" name="profitMode" value="fixed">
-                    <label for="profitFixed">固定金额</label>
-                </div>
-                
-                <div class="input-group">
-                    <label for="profitValue">盈利目标值</label>
-                    <input type="number" id="profitValue" placeholder="输入百分比(如: 2)或金额(如: 500)">
-                </div>
-            </div>
-            
-            <!-- 两头价格输入功能 -->
-            <div class="calculator-mode">
-                <h3>模式二: 根据买入和卖出价格计算利润或利润率</h3>
                 
                 <div class="input-group">
                     <label for="buyPrice">买入价格 (元)</label>
-                    <input type="number" id="buyPrice" placeholder="您买入的价格">
+                    <input type="number" id="buyPrice" placeholder="您买入的价格" step="0.001">
                 </div>
                 
                 <div class="input-group">
                     <label for="sellPrice">卖出价格 (元)</label>
-                    <input type="number" id="sellPrice" placeholder="您卖出的价格">
+                    <input type="number" id="sellPrice" placeholder="您卖出的价格" step="0.001">
                 </div>
                 
                 <div class="input-group">
@@ -80,92 +47,62 @@
                     <input type="number" id="commissionRate" value="0.025" step="0.001" placeholder="例如: 0.025 (万2.5)">
                 </div>
                 
-                <div class="input-group radio-group">
-                    <label>计算目标:</label>
-                    <input type="radio" id="calcProfit" name="newCalcType" value="profit" checked>
-                    <label for="calcProfit">计算利润</label>
-                    <input type="radio" id="calcProfitRate" name="newCalcType" value="profitRate">
-                    <label for="calcProfitRate">计算利润率</label>
+                <!-- 成本更新功能 -->
+                <div class="cost-update-section">
+                    <h4>成本更新功能 (做T后成本计算)</h4>
+                    <div class="input-group">
+                        <label for="currentCost">当前持仓成本 (元)</label>
+                        <input type="number" id="currentCost" placeholder="当前每股成本价格" step="0.001">
+                    </div>
+                    <div class="input-group">
+                        <label for="currentShares">当前持仓数量 (股)</label>
+                        <input type="number" id="currentShares" placeholder="当前持有股票数量">
+                    </div>
+                    <div class="input-group checkbox-group">
+                        <input type="checkbox" id="enableCostUpdate">
+                        <label for="enableCostUpdate">启用成本更新计算</label>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="input-group radio-group mode-selection">
-                <label>计算模式:</label>
-                <input type="radio" id="useMode1" name="calculatorMode" value="mode1">
-                <label for="useMode1">模式一 (高抛低吸)</label>
-                <input type="radio" id="useMode2" name="calculatorMode" value="mode2">
-                <label for="useMode2">模式二 (两头价格)</label>
             </div>
 
             <button id="calculateBtn">开始计算</button>
 
-            <!-- 通用结果显示区域 -->
+            <!-- 结果显示区域 -->
             <div id="result" class="result-container hidden">
                 <h2>计算结果</h2>
                 
-                <!-- 模式一结果显示 (高抛低吸) -->
-                <div id="mode1Result" class="mode-result hidden">
-                    <div class="result-main">
-                        <div id="resultTypeLabel" class="result-type"></div>
-                        <div class="result-value-container">
-                            <span id="resultValue" class="result-value"></span>
-                            <span id="resultUnit" class="result-unit"></span>
-                        </div>
+                <div class="profit-info">
+                    <div class="info-item">
+                        <span class="info-label">净利润:</span>
+                        <span id="netProfit" class="info-value"></span>
+                        <span class="info-unit">元</span>
                     </div>
-                    
-                    <div class="profit-info">
-                        <div class="info-item">
-                            <span class="info-label">净利润:</span>
-                            <span id="netProfit" class="info-value"></span>
-                            <span class="info-unit">元</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">利润率:</span>
-                            <span id="profitRate" class="info-value"></span>
-                            <span class="info-unit">%</span>
-                        </div>
+                    <div class="info-item">
+                        <span class="info-label">利润率:</span>
+                        <span id="profitRate" class="info-value"></span>
+                        <span class="info-unit">%</span>
                     </div>
                 </div>
                 
-                <!-- 模式二结果显示 (两头价格) -->
-                <div id="mode2Result" class="mode-result hidden">
-                    <div class="result-main">
-                        <div id="resultTypeLabel2" class="result-type"></div>
-                        <div class="result-value-container">
-                            <span id="resultValue2" class="result-value"></span>
-                            <span id="resultUnit2" class="result-unit"></span>
-                        </div>
+                <div class="trade-info">
+                    <div class="info-item">
+                        <span class="info-label">交易方向:</span>
+                        <span id="tradeDirectionDisplay" class="info-value"></span>
                     </div>
-                    
-                    <div class="profit-info">
-                        <div class="info-item">
-                            <span class="info-label">利润:</span>
-                            <span id="mode2NetProfit" class="info-value"></span>
-                            <span class="info-unit">元</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">利润率:</span>
-                            <span id="mode2ProfitRate" class="info-value"></span>
-                            <span class="info-unit">%</span>
-                        </div>
+                    <div class="info-item">
+                        <span class="info-label">买入价:</span>
+                        <span id="buyPriceDisplay" class="info-value"></span>
+                        <span class="info-unit">元</span>
                     </div>
-                    
-                    <div class="trade-info">
-                        <div class="info-item">
-                            <span class="info-label">买入价:</span>
-                            <span id="buyPriceDisplay" class="info-value"></span>
-                            <span class="info-unit">元</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">卖出价:</span>
-                            <span id="sellPriceDisplay" class="info-value"></span>
-                            <span class="info-unit">元</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">股数:</span>
-                            <span id="sharesDisplay" class="info-value"></span>
-                            <span class="info-unit">股</span>
-                        </div>
+                    <div class="info-item">
+                        <span class="info-label">卖出价:</span>
+                        <span id="sellPriceDisplay" class="info-value"></span>
+                        <span class="info-unit">元</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">股数:</span>
+                        <span id="sharesDisplay" class="info-value"></span>
+                        <span class="info-unit">股</span>
                     </div>
                 </div>
                 
@@ -185,6 +122,43 @@
                         <div class="info-item">
                             <span class="info-label">卖出费用:</span>
                             <span id="sellCost" class="info-value"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 成本更新结果 -->
+                <div id="costUpdateResult" class="cost-update-result hidden">
+                    <h3>交易后成本信息</h3>
+                    <div class="cost-update-info">
+                        <div class="info-item">
+                            <span class="info-label">交易前成本:</span>
+                            <span id="beforeCost" class="info-value"></span>
+                            <span class="info-unit">元/股</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">交易前持仓:</span>
+                            <span id="beforeShares" class="info-value"></span>
+                            <span class="info-unit">股</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">交易后成本:</span>
+                            <span id="afterCost" class="info-value highlight"></span>
+                            <span class="info-unit">元/股</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">交易后持仓:</span>
+                            <span id="afterShares" class="info-value"></span>
+                            <span class="info-unit">股</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">成本变化:</span>
+                            <span id="costChange" class="info-value"></span>
+                            <span class="info-unit">元/股</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">成本变化率:</span>
+                            <span id="costChangeRate" class="info-value"></span>
+                            <span class="info-unit">%</span>
                         </div>
                     </div>
                 </div>
